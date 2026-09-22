@@ -1,0 +1,76 @@
+[workspace]
+members = [
+    "crates/bench-common",
+    "crates/plonky2-ivc",
+    "crates/sonobe-ivc",
+    "crates/nova-spartan-ivc",
+    "crates/hypernova-pcd",
+    "crates/ivc-bench",
+]
+exclude = ["third_party"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+
+[workspace.dependencies]
+bench-common = { path = "crates/bench-common" }
+plonky2-ivc = { path = "crates/plonky2-ivc" }
+sonobe-ivc = { path = "crates/sonobe-ivc" }
+nova-spartan-ivc = { path = "crates/nova-spartan-ivc" }
+
+# --- Microsoft Nova stack (Nova folding + Spartan compression SNARK) ---
+nova-snark = { version = "0.75.0" }
+ff = { version = "0.13" }
+
+# --- Plonky2 stack (Goldilocks 64-bit + Poseidon, native STARK/FRI recursion) ---
+plonky2 = { version = "1.1.0" }
+
+# --- Sonobe stack (Nova + CycleFold over Bn254/Grumpkin, arkworks 0.5) ---
+# Pinned to the last revision where the FULL DeciderEth (Groth16+KZG) circuit
+# verifies. The next commit (e9bebdb, PR #203 "optimize pedersen and ipa
+# commit") switched to a patched ark-r1cs-std fork and broke the full decider
+# path (SNARKVerificationFail), which sonobe's CI does not catch because it
+# only tests the decider with the `light-test` feature.
+folding-schemes = { git = "https://github.com/privacy-scaling-explorations/sonobe", rev = "839db0c6a1a895495dbeb14104abe5e0122fdfef", package = "folding-schemes" }
+ark-bn254 = { version = "0.5", features = ["r1cs"] }
+ark-grumpkin = { version = "0.5", features = ["r1cs"] }
+ark-groth16 = { version = "0.5" }
+ark-ff = { version = "0.5" }
+ark-ec = { version = "0.5" }
+ark-r1cs-std = { version = "0.5" }
+ark-relations = { version = "0.5" }
+ark-crypto-primitives = { version = "0.5", features = ["r1cs", "sponge", "crh"] }
+ark-std = { version = "0.5" }
+ark-serialize = { version = "0.5" }
+
+# misc
+sha2 = "0.10"
+anyhow = "1"
+rand = "0.8"
+
+# No [patch.crates-io]: the pinned sonobe revision builds against the vanilla
+# crates.io arkworks 0.5 stack (the ark-r1cs-std perf fork only became a
+# requirement in later revisions, where it breaks the full decider).
+
+# Local vendored copy of folding-schemes at the pinned rev with a one-line fix:
+# HyperNova's DeciderEth keygen shapes its dummy NIMFS proof with (MU, NU)
+# while the decider circuit always verifies a 1x1 fold — panics for MU > 1
+# (upstream only tests MU = NU = 1). See third_party/sonobe-839-patched.
+[patch."https://github.com/privacy-scaling-explorations/sonobe"]
+folding-schemes = { path = "third_party/sonobe-839-patched/folding-schemes" }
+
+[profile.release]
+opt-level = 3
+# NOTE: LTO must be fully "off" (not `false`, which still runs thin *local*
+# LTO across codegen units): combined with `-C target-cpu=native`, any LTO
+# inlining makes halo2curves' inline assembly (pulled in by nova-snark) fail
+# with "inline assembly requires more registers than available".
+lto = "off"
+codegen-units = 16
+debug = false
+
+# Criterion-style bench profile inherits release.
+[profile.bench]
+inherits = "release"

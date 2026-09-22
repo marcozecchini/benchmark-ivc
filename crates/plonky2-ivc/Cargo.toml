@@ -1,0 +1,10 @@
+[package]
+name = "plonky2-ivc"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+plonky2 = { workspace = true }
+bench-common = { workspace = true }
+sha2 = { workspace = true }
+anyhow = { workspace = true }

@@ -1,0 +1,23 @@
+[package]
+name = "ivc-bench"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+bench-common = { workspace = true }
+plonky2-ivc = { workspace = true }
+sonobe-ivc = { workspace = true }
+nova-spartan-ivc = { workspace = true }
+
+# Only the custom ivc_benchmark harness should react to `cargo bench` args.
+[lib]
+bench = false
+
+[[bin]]
+name = "ivc-bench"
+path = "src/main.rs"
+bench = false
+
+[[bench]]
+name = "ivc_benchmark"
+harness = false
